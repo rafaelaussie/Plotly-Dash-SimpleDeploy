@@ -17,7 +17,7 @@ import pandas as pd
 
 app = dash.Dash()
 
-nsdq = pd.read_csv('https://storage.cloud.google.com/plotly-dash.appspot.com/NASDAQcompanylist.csv')
+nsdq = pd.read_csv('https://storage.googleapis.com/plotly-dash-files/NASDAQcompanylist.csv')
 nsdq.set_index('Symbol', inplace=True)
 options = []
 for tic in nsdq.index:
