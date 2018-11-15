@@ -14,6 +14,7 @@ from dash.dependencies import Input, Output, State
 import pandas_datareader.data as web # requires v0.6.0 or later
 from datetime import datetime
 import pandas as pd
+from flask import Flask
 
 server = Flask(__name__)
 app = dash.Dash(__name__, server=server)
@@ -50,7 +51,7 @@ app.layout = html.Div([
             id='submit-button',
             n_clicks=0,
             children='Submit',
-            style={'fontSize':24, 'marginLeft':'30px'}
+            style={'fontSize':14, 'marginLeft':'30px'}
         ),
     ], style={'display':'inline-block'}),
     dcc.Graph(
