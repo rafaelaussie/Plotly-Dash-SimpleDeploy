@@ -10,10 +10,8 @@ from dash.dependencies import Input, Output
 import plotly.graph_objs as go
 import pandas as pd
 from numpy import random
-from flask import Flask
 
-server = Flask(__name__)
-app = dash.Dash(__name__,server=server)
+app = dash.Dash()
 
 df = pd.read_csv('https://storage.googleapis.com/plotly-dash-files/mpg.csv')
 
