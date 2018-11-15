@@ -1,86 +1,101 @@
 #######
-# First Milestone Project: Develop a Stock Ticker
-# dashboard that either allows the user to enter
-# a ticker symbol into an input box, or to select
-# item(s) from a dropdown list, and uses pandas_datareader
-# to look up and display stock data on a graph.
+# This shows the mpg.csv dataset as a spread out scatter plot
+# that sends hoverData to another graph via callback, and to
+# a Markdown component through a second callback.
 ######
-
-# EXPAND STOCK SYMBOL INPUT TO PERMIT MULTIPLE STOCK SELECTION
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
-from dash.dependencies import Input, Output, State
-import pandas_datareader.data as web # requires v0.6.0 or later
-from datetime import datetime
+from dash.dependencies import Input, Output
+import plotly.graph_objs as go
 import pandas as pd
+from numpy import random
 from flask import Flask
 
 server = Flask(__name__)
-app = dash.Dash(__name__, server=server)
+app = dash.Dash(__name__,server=server)
 
-nsdq = pd.read_csv('https://storage.googleapis.com/plotly-dash-files/NASDAQcompanylist.csv')
-nsdq.set_index('Symbol', inplace=True)
-options = []
-for tic in nsdq.index:
-    options.append({'label':'{} {}'.format(tic,nsdq.loc[tic]['Name']), 'value':tic})
+df = pd.read_csv('https://storage.googleapis.com/plotly-dash-files/mpg.csv')
+
+# Add a random "jitter" to model_year to spread out the plot
+df['year'] = df['model_year'] + random.randint(-4,5,len(df))*0.10
 
 app.layout = html.Div([
-    html.H1('Stock Ticker Dashboard'),
-    html.Div([
-        html.H3('Select stock symbols:', style={'paddingRight':'30px'}),
-        dcc.Dropdown(
-            id='my_ticker_symbol',
-            options=options,
-            value=['TSLA'],
-            multi=True
-        )
-    ], style={'display':'inline-block', 'verticalAlign':'top', 'width':'30%'}),
-    html.Div([
-        html.H3('Select start and end dates:'),
-        dcc.DatePickerRange(
-            id='my_date_picker',
-            min_date_allowed=datetime(2015, 1, 1),
-            max_date_allowed=datetime.today(),
-            start_date=datetime(2018, 1, 1),
-            end_date=datetime.today()
-        )
-    ], style={'display':'inline-block'}),
-    html.Div([
-        html.Button(
-            id='submit-button',
-            n_clicks=0,
-            children='Submit',
-            style={'fontSize':14, 'marginLeft':'30px'}
-        ),
-    ], style={'display':'inline-block'}),
+    html.Div([   # this Div contains our scatter plot
     dcc.Graph(
-        id='my_graph',
+        id='mpg_scatter',
         figure={
-            'data': [
-                {'x': [1,2], 'y': [3,1]}
-            ]
+            'data': [go.Scatter(
+                x = df['year']+1900,  # our "jittered" data
+                y = df['mpg'],
+                text = df['name'],
+                hoverinfo = 'text',
+                mode = 'markers'
+            )],
+            'layout': go.Layout(
+                title = 'mpg.csv dataset',
+                xaxis = {'title': 'model year'},
+                yaxis = {'title': 'miles per gallon'},
+                hovermode='closest'
+            )
         }
+    )], style={'width':'50%','display':'inline-block'}),
+    html.Div([  # this Div contains our output graph and vehicle stats
+    dcc.Graph(
+        id='mpg_line',
+        figure={
+            'data': [go.Scatter(
+                x = [0,1],
+                y = [0,1],
+                mode = 'lines'
+            )],
+            'layout': go.Layout(
+                title = 'acceleration',
+                margin = {'l':0}
+            )
+        }
+    ),
+    dcc.Markdown(
+        id='mpg_stats'
     )
+    ], style={'width':'20%', 'height':'50%','display':'inline-block'})
 ])
+
 @app.callback(
-    Output('my_graph', 'figure'),
-    [Input('submit-button', 'n_clicks')],
-    [State('my_ticker_symbol', 'value'),
-    State('my_date_picker', 'start_date'),
-    State('my_date_picker', 'end_date')])
-def update_graph(n_clicks, stock_ticker, start_date, end_date):
-    start = datetime.strptime(start_date[:10], '%Y-%m-%d')
-    end = datetime.strptime(end_date[:10], '%Y-%m-%d')
-    traces = []
-    for tic in stock_ticker:
-        df = web.DataReader(tic,'iex',start,end)
-        traces.append({'x':df.index, 'y': df.close, 'name':tic})
+    Output('mpg_line', 'figure'),
+    [Input('mpg_scatter', 'hoverData')])
+def callback_graph(hoverData):
+    v_index = hoverData['points'][0]['pointIndex']
     fig = {
-        'data': traces,
-        'layout': {'title':', '.join(stock_ticker)+' Closing Prices'}
+        'data': [go.Scatter(
+            x = [0,1],
+            y = [0,60/df.iloc[v_index]['acceleration']],
+            mode='lines',
+            line={'width':2*df.iloc[v_index]['cylinders']}
+        )],
+        'layout': go.Layout(
+            title = df.iloc[v_index]['name'],
+            xaxis = {'visible':False},
+            yaxis = {'visible':False, 'range':[0,60/df['acceleration'].min()]},
+            margin = {'l':0},
+            height = 300
+        )
     }
     return fig
+
+@app.callback(
+    Output('mpg_stats', 'children'),
+    [Input('mpg_scatter', 'hoverData')])
+def callback_stats(hoverData):
+    v_index = hoverData['points'][0]['pointIndex']
+    stats = """
+        {} cylinders
+        {}cc displacement
+        0 to 60mph in {} seconds
+        """.format(df.iloc[v_index]['cylinders'],
+            df.iloc[v_index]['displacement'],
+            df.iloc[v_index]['acceleration'])
+    return stats
 
 if __name__ == '__main__':
     app.run_server()
