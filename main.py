@@ -15,7 +15,8 @@ import pandas_datareader.data as web # requires v0.6.0 or later
 from datetime import datetime
 import pandas as pd
 
-app = dash.Dash()
+server = Flask(__name__)
+app = dash.Dash(__name__, server=server)
 
 nsdq = pd.read_csv('https://storage.googleapis.com/plotly-dash-files/NASDAQcompanylist.csv')
 nsdq.set_index('Symbol', inplace=True)
